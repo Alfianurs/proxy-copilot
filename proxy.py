@@ -22,23 +22,28 @@ def request(flow: http.HTTPFlow) -> None:
         flow.request.set_text(json.dumps(json_data))
 
         # Modify the request URL
-        flow.request.host = "api.openai.com"
+        flow.request.host = "waveai.onrender.com"
 
         # Strip all existing headers
         flow.request.headers.clear()
 
         # Add new headers
         flow.request.headers["Content-Type"] = "application/json"
-        flow.request.headers["Authorization"] = f"Bearer {OPENAI_API_KEY}"
+        # flow.request.headers["Authorization"] = f"Bearer {OPENAI_API_KEY}"
     else:
         # Forward the request to the original destination
         pass
 
 # TODO: streaming doesn't seem to work yet
+from mitmproxy import ctx
+
 def response(flow: http.HTTPFlow) -> None:
-    if (flow.request.host == "api.openai.com" and
+    if (flow.request.host == "waveai.onrender.com" and
             flow.request.path == "/v1/chat/completions"):
         # Forward the streamed response to the client
-        for chunk in flow.response.stream:
-            ctx.log.info(f"Forwarding chunk: {chunk}")
-            ctx.master.commands.call("view.response.stream", [chunk])
+        if not isinstance(flow.response.stream, bool):
+            for chunk in flow.response.stream:
+                ctx.log.info(f"Forwarding chunk: {chunk}")
+                ctx.master.commands.call("view.response.stream", [chunk])
+        else:
+            ctx.log.error("flow.response.stream is a boolean, not iterable")
